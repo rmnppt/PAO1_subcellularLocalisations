@@ -1,0 +1,47 @@
+#
+# Make an up to date table of the subcellular localisation of PAO1 genes
+#
+
+rm(list = ls())
+library(reshape2)
+
+# load in the annotations direct from the web
+pao1 <- read.csv2("http://pseudomonas.com/downloads/pseudomonas/csv/NC_002516.csv", skip = 4, sep = ",", as.is = T)
+
+# change the heading name
+names(pao1)[15] <- "local"
+
+# constrain to coding sequences
+pao1 <- subset(pao1, Feature.Type == "CDS")
+
+# change the name of cytoplasmic membrane to avoid grep conflicts with cytoplasmic
+pao1$local <- sub("Cytoplasmic Membrane", "Inner Membrane", pao1$local)
+
+# make a table...
+locs <- data.frame(genes = pao1$Locus.Tag,
+                   cytoplasm = 0, 
+                   innerMembrane = 0, 
+                   periplasm = 0, 
+                   outerMembrane = 0, 
+                   extracellular = 0)
+
+# ...and populate it with binary
+locs$cytoplasm[grep("Cyto", pao1$local)] <- 1
+locs$innerMembrane[grep("Inner", pao1$local)] <- 1
+locs$periplasm[grep("Peri", pao1$local)] <- 1
+locs$outerMembrane[grep("Outer", pao1$local)] <- 1
+locs$extracellular[grep("Extra", pao1$local)] <- 1
+
+# plot
+par(mar = c(4, 8, 1, 1), las = 1)
+image(as.matrix(locs[2:6]), axes = F, col = c("white", "black"))
+axis(2, (0:4)/4, colnames(locs)[2:6], F)
+mtext("chromosome position (PA Number)", 1)
+
+# tabulate
+locsm <- melt(locs)
+table(locsm$variable, locsm$value)
+
+# export
+write.csv(locs, "pao1_localisations.csv")
+
